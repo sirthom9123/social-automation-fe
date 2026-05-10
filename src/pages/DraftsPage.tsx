@@ -38,18 +38,24 @@ export function DraftsPage() {
   const [msg, setMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setErr(null);
     const params = new URLSearchParams();
     if (projectId) params.set("project_id", projectId);
     if (platform) params.set("platform", platform);
     if (contentType) params.set("content_type", contentType);
     if (status) params.set("status", status);
     const qs = params.toString();
-    const r = await apiFetch<{ drafts: Draft[] }>(`/post-drafts${qs ? `?${qs}` : ""}`);
-    setDrafts(r.drafts);
+    try {
+      const r = await apiFetch<{ drafts: Draft[] }>(`/post-drafts${qs ? `?${qs}` : ""}`);
+      setDrafts(r.drafts);
+    } catch (ex) {
+      setDrafts([]);
+      setErr(ex instanceof ApiError ? ex.message : "Could not load drafts");
+    }
   }, [projectId, platform, contentType, status]);
 
   useEffect(() => {
-    void load().catch(() => undefined);
+    void load();
   }, [load]);
 
   async function setDraftStatus(id: string, next: string) {
@@ -110,14 +116,19 @@ export function DraftsPage() {
     <div>
       <h1>{projectId ? "Social drafts (this website)" : "Post drafts"}</h1>
       <p className="muted">
+        <strong>What this page is:</strong> social post copy stored per run (headline, body, format). They are{" "}
+        <em>not</em> created by Analyze alone — you need a run that already has generated{" "}
+        <code>ad_content</code>, then either call{" "}
+        <code>POST /runs/&lt;run_id&gt;/post-drafts</code> (with <code>organic_items</code> or{" "}
+        <code>platforms</code>), or use weekly automation (approved themes + scheduler) to materialize drafts.
+      </p>
+      <p className="muted">
         {projectId
-          ? "Only drafts whose runs belong to this project appear here (URL-scoped workspace)."
-          : "Account-wide list — open a website workspace from Websites for a filtered view."}{" "}
-        Organic formats are tracked per draft — <strong>Facebook</strong> feed (4:5), <strong>Reels</strong> (9:16),
-        short <strong>status</strong> lines, <strong>TikTok</strong> video vs <strong>photo slides</strong> (9:16
-        carousel). Generate packs via{" "}
-        <code>POST /runs/&lt;id&gt;/post-drafts</code> with <code>organic_items</code> (see API docs). Approve
-        and set <code>scheduled_for</code> for the hourly publish tick.
+          ? "This workspace only lists drafts whose runs belong to this website. If you generated posts under another project, open that workspace or use the global Drafts page."
+          : "Account-wide list — open a website workspace from Websites for a single-site filter."}{" "}
+        Formats: <strong>Facebook</strong> feed (4:5), <strong>Reels</strong> (9:16), short{" "}
+        <strong>status</strong> lines, <strong>TikTok</strong> video vs slides. Approve drafts and set{" "}
+        <code>scheduled_for</code> for the publish tick.
       </p>
       {err ? <div className="error">{err}</div> : null}
       {msg ? <div className="success">{msg}</div> : null}
@@ -163,12 +174,14 @@ export function DraftsPage() {
         </div>
       </div>
 
-      {drafts.length === 0 ? (
+      {drafts.length === 0 && !err ? (
         <p className="muted">
-          No drafts match. Generate drafts from a run with{" "}
-          <code>POST /runs/&lt;run_id&gt;/post-drafts</code> — use <code>organic_items</code> for reels/slides.
+          No social drafts yet (or none match your filters). After generate has produced ad copy on a run, create
+          drafts with the API above, or enable the weekly plan + approved themes so the scheduler can add{" "}
+          <code>post_draft</code> rows for that project.
         </p>
-      ) : (
+      ) : null}
+      {drafts.length > 0 ? (
         <div className="stack">
           {drafts.map((d) => (
             <div key={d.id} className="card stack">
@@ -243,7 +256,7 @@ export function DraftsPage() {
             </div>
           ))}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
