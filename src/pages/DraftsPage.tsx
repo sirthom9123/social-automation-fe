@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { AuthenticatedImage } from "../components/AuthenticatedImage";
 import { ApiError, apiFetch } from "../api";
 
 type Draft = {
@@ -18,8 +19,10 @@ type Draft = {
   cta: string | null;
   hashtags: string[];
   theme_id: string | null;
+  theme_name?: string | null;
   image_media_path: string | null;
   video_media_path: string | null;
+  image_prompt_suggestion?: string | null;
   scheduled_for: string | null;
   status: string;
   created_at: string | null;
@@ -27,6 +30,88 @@ type Draft = {
 
 const PLATFORMS = ["", "facebook", "tiktok", "linkedin"];
 const STATUSES = ["", "draft", "pending_review", "approved", "rejected", "posted", "failed"];
+
+const STATUS_PIPELINE = ["draft", "pending_review", "approved", "scheduled", "posted"];
+
+function StatusBadge({ status }: { status: string }) {
+  const colors: Record<string, { bg: string; fg: string }> = {
+    draft: { bg: "#e8e8e8", fg: "#555" },
+    pending_review: { bg: "#fff3cd", fg: "#856404" },
+    approved: { bg: "#d4edda", fg: "#155724" },
+    scheduled: { bg: "#cce5ff", fg: "#004085" },
+    posted: { bg: "#28a745", fg: "#fff" },
+    rejected: { bg: "#f8d7da", fg: "#721c24" },
+    failed: { bg: "#dc3545", fg: "#fff" },
+  };
+  const c = colors[status] || colors.draft;
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        padding: "2px 10px",
+        borderRadius: 12,
+        fontSize: 12,
+        fontWeight: 600,
+        background: c.bg,
+        color: c.fg,
+        textTransform: "uppercase",
+        letterSpacing: "0.5px",
+      }}
+    >
+      {status.replace("_", " ")}
+    </span>
+  );
+}
+
+function PlatformIcon({ platform }: { platform: string }) {
+  const labels: Record<string, string> = {
+    facebook: "FB",
+    tiktok: "TT",
+    linkedin: "LI",
+  };
+  const colors: Record<string, string> = {
+    facebook: "#1877f2",
+    tiktok: "#000",
+    linkedin: "#0a66c2",
+  };
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        padding: "2px 8px",
+        borderRadius: 4,
+        fontSize: 11,
+        fontWeight: 700,
+        background: colors[platform] || "#666",
+        color: "#fff",
+        marginRight: 8,
+      }}
+    >
+      {labels[platform] || platform.toUpperCase()}
+    </span>
+  );
+}
+
+function StatusPipeline({ current }: { current: string }) {
+  const idx = STATUS_PIPELINE.indexOf(current);
+  return (
+    <div style={{ display: "flex", gap: 2, alignItems: "center", margin: "8px 0" }}>
+      {STATUS_PIPELINE.map((step, i) => (
+        <div
+          key={step}
+          style={{
+            flex: 1,
+            height: 4,
+            borderRadius: 2,
+            background: i <= idx ? "#28a745" : "#e0e0e0",
+            transition: "background 0.3s",
+          }}
+          title={step.replace("_", " ")}
+        />
+      ))}
+    </div>
+  );
+}
 
 export function DraftsPage() {
   const { projectId } = useParams<{ projectId?: string }>();
@@ -97,23 +182,28 @@ export function DraftsPage() {
     }
   }
 
-  async function registerWebhook() {
+  async function publishDraft(id: string, draftPlatform: string) {
     setErr(null);
     setMsg(null);
     try {
-      const r = await apiFetch<{ ok: boolean; webhook_url: string; error?: string }>(
-        "/telegram/set-webhook",
-        { method: "POST" },
+      const r = await apiFetch<{ status: string; post_id?: string; error?: string }>(
+        `/publish/${draftPlatform}`,
+        { method: "POST", body: JSON.stringify({ draft_id: id }) },
       );
-      if (r.ok) setMsg(`Webhook set: ${r.webhook_url}`);
-      else setErr(`Webhook error: ${r.error || "unknown"}`);
+      if (r.status === "ok") {
+        setMsg(`Published successfully! Post ID: ${r.post_id || "N/A"}`);
+      } else {
+        setErr(`Publish failed: ${r.error || r.status}`);
+      }
+      await load();
     } catch (ex) {
-      setErr(ex instanceof ApiError ? ex.message : "Webhook registration failed");
+      setErr(ex instanceof ApiError ? ex.message : "Publish failed");
     }
   }
 
   return (
     <div>
+<<<<<<< Updated upstream
       <h1>{projectId ? "Social drafts (this website)" : "Post drafts"}</h1>
       <p className="muted">
         <strong>What this page is:</strong> social post copy stored per run (headline, body, format). They are{" "}
@@ -132,9 +222,15 @@ export function DraftsPage() {
       </p>
       {err ? <div className="error">{err}</div> : null}
       {msg ? <div className="success">{msg}</div> : null}
+=======
+      <h1>{projectId ? "Post Drafts" : "All Post Drafts"}</h1>
+>>>>>>> Stashed changes
 
-      <div className="card stack">
-        <div className="row">
+      {err && <div className="error">{err}</div>}
+      {msg && <div className="success">{msg}</div>}
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="row" style={{ flexWrap: "wrap", gap: 12 }}>
           <label>
             Platform
             <select value={platform} onChange={(e) => setPlatform(e.target.value)}>
@@ -168,12 +264,10 @@ export function DraftsPage() {
           <button type="button" className="btn secondary" onClick={() => void load()}>
             Reload
           </button>
-          <button type="button" className="btn ghost" onClick={() => void registerWebhook()}>
-            Register Telegram webhook
-          </button>
         </div>
       </div>
 
+<<<<<<< Updated upstream
       {drafts.length === 0 && !err ? (
         <p className="muted">
           No social drafts yet (or none match your filters). After generate has produced ad copy on a run, create
@@ -226,37 +320,170 @@ export function DraftsPage() {
                   defaultValue={d.scheduled_for || ""}
                   placeholder="2026-05-01T09:00:00Z"
                   onBlur={(e) => void scheduleDraft(d.id, e.target.value.trim())}
+=======
+      {drafts.length === 0 && !err && (
+        <div className="card" style={{ textAlign: "center", padding: 40 }}>
+          <p className="muted" style={{ margin: 0 }}>
+            No drafts match your filters. Drafts are generated automatically when themes are approved
+            and the weekly plan runs.
+          </p>
+        </div>
+      )}
+
+      <div style={{ display: "grid", gap: 16 }}>
+        {drafts.map((d) => (
+          <div
+            key={d.id}
+            className="card"
+            style={{
+              display: "grid",
+              gridTemplateColumns: d.image_media_path ? "140px 1fr" : "1fr",
+              gap: 16,
+              padding: 16,
+            }}
+          >
+            {d.image_media_path && (
+              <div style={{ borderRadius: 8, overflow: "hidden", background: "#f5f5f5" }}>
+                <AuthenticatedImage
+                  urlPath={d.image_media_path}
+                  alt={d.headline || "Post image"}
+                  className="media-thumb-img"
+>>>>>>> Stashed changes
                 />
-              </label>
-              <div className="row">
-                {d.status === "draft" ? (
-                  <button type="button" className="btn" onClick={() => void sendReview(d.id)}>
-                    Send to Telegram for review
-                  </button>
-                ) : null}
-                {d.status !== "approved" ? (
-                  <button
-                    type="button"
-                    className="btn secondary"
-                    onClick={() => void setDraftStatus(d.id, "approved")}
-                  >
-                    Approve
-                  </button>
-                ) : null}
-                {d.status !== "rejected" ? (
+              </div>
+            )}
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <PlatformIcon platform={d.platform} />
+                <StatusBadge status={d.status} />
+                {d.theme_name && (
+                  <span className="muted" style={{ fontSize: 12 }}>
+                    Theme: {d.theme_name}
+                  </span>
+                )}
+                {d.aspect_ratio && (
+                  <span className="muted" style={{ fontSize: 11 }}>
+                    {d.aspect_ratio}
+                  </span>
+                )}
+              </div>
+
+              <StatusPipeline current={d.status} />
+
+              {d.headline && (
+                <h3 style={{ margin: 0, fontSize: 16 }}>{d.headline}</h3>
+              )}
+
+              {d.body && (
+                <p style={{ whiteSpace: "pre-wrap", margin: 0, fontSize: 14, lineHeight: 1.5 }}>
+                  {d.body.length > 300 ? d.body.slice(0, 300) + "..." : d.body}
+                </p>
+              )}
+
+              {d.cta && (
+                <p style={{ margin: 0, fontSize: 13, color: "#1877f2", fontWeight: 600 }}>
+                  {d.cta}
+                </p>
+              )}
+
+              {d.hashtags.length > 0 && (
+                <p style={{ margin: 0, fontSize: 12, color: "#666" }}>
+                  {d.hashtags.join(" ")}
+                </p>
+              )}
+
+              {d.scheduled_for && (
+                <p style={{ margin: 0, fontSize: 12, color: "#004085" }}>
+                  Scheduled: {new Date(d.scheduled_for).toLocaleString()}
+                </p>
+              )}
+
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                {d.status === "draft" && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{ fontSize: 13 }}
+                      onClick={() => void sendReview(d.id)}
+                    >
+                      Send for Review
+                    </button>
+                    <button
+                      type="button"
+                      className="btn secondary"
+                      style={{ fontSize: 13 }}
+                      onClick={() => void setDraftStatus(d.id, "approved")}
+                    >
+                      Approve
+                    </button>
+                  </>
+                )}
+                {d.status === "pending_review" && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn secondary"
+                      style={{ fontSize: 13 }}
+                      onClick={() => void setDraftStatus(d.id, "approved")}
+                    >
+                      Approve
+                    </button>
+                    <button
+                      type="button"
+                      className="btn ghost"
+                      style={{ fontSize: 13 }}
+                      onClick={() => void setDraftStatus(d.id, "rejected")}
+                    >
+                      Reject
+                    </button>
+                  </>
+                )}
+                {d.status === "approved" && (
+                  <>
+                    <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13 }}>
+                      Schedule:
+                      <input
+                        type="datetime-local"
+                        style={{ fontSize: 12 }}
+                        onBlur={(e) => {
+                          const val = e.target.value;
+                          if (val) void scheduleDraft(d.id, new Date(val).toISOString());
+                        }}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{ fontSize: 13 }}
+                      onClick={() => void publishDraft(d.id, d.platform)}
+                    >
+                      Publish Now
+                    </button>
+                  </>
+                )}
+                {d.status === "rejected" && (
                   <button
                     type="button"
                     className="btn ghost"
-                    onClick={() => void setDraftStatus(d.id, "rejected")}
+                    style={{ fontSize: 13 }}
+                    onClick={() => void setDraftStatus(d.id, "draft")}
                   >
-                    Reject
+                    Move back to Draft
                   </button>
-                ) : null}
+                )}
               </div>
             </div>
+<<<<<<< Updated upstream
           ))}
         </div>
       ) : null}
+=======
+          </div>
+        ))}
+      </div>
+>>>>>>> Stashed changes
     </div>
   );
 }

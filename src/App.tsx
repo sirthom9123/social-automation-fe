@@ -1,6 +1,7 @@
 import { Link, Navigate, Outlet, Route, Routes, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { useAuth } from "./auth";
+import { ActiveJobsBanner } from "./components/ActiveJobsBanner";
 import { ProjectWorkspaceLayout } from "./layouts/ProjectWorkspaceLayout";
 import { AutomationPage } from "./pages/AutomationPage";
 import { CampaignFlowPage } from "./pages/CampaignFlowPage";
@@ -25,6 +26,7 @@ function Layout() {
   const { user, logout } = useAuth();
   return (
     <div className="layout">
+      <ActiveJobsBanner />
       <header className="header">
         <div className="brand">Marketing automation</div>
         <nav className="nav">
