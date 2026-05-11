@@ -46,7 +46,7 @@ const bannerStyle: React.CSSProperties = {
   boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
 };
 
-const chipStyle = (status: string): React.CSSProperties => ({
+const chipStyle = (_status?: string): React.CSSProperties => ({
   display: "inline-flex",
   alignItems: "center",
   gap: "6px",

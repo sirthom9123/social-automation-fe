@@ -203,28 +203,7 @@ export function DraftsPage() {
 
   return (
     <div>
-<<<<<<< Updated upstream
-      <h1>{projectId ? "Social drafts (this website)" : "Post drafts"}</h1>
-      <p className="muted">
-        <strong>What this page is:</strong> social post copy stored per run (headline, body, format). They are{" "}
-        <em>not</em> created by Analyze alone — you need a run that already has generated{" "}
-        <code>ad_content</code>, then either call{" "}
-        <code>POST /runs/&lt;run_id&gt;/post-drafts</code> (with <code>organic_items</code> or{" "}
-        <code>platforms</code>), or use weekly automation (approved themes + scheduler) to materialize drafts.
-      </p>
-      <p className="muted">
-        {projectId
-          ? "This workspace only lists drafts whose runs belong to this website. If you generated posts under another project, open that workspace or use the global Drafts page."
-          : "Account-wide list — open a website workspace from Websites for a single-site filter."}{" "}
-        Formats: <strong>Facebook</strong> feed (4:5), <strong>Reels</strong> (9:16), short{" "}
-        <strong>status</strong> lines, <strong>TikTok</strong> video vs slides. Approve drafts and set{" "}
-        <code>scheduled_for</code> for the publish tick.
-      </p>
-      {err ? <div className="error">{err}</div> : null}
-      {msg ? <div className="success">{msg}</div> : null}
-=======
       <h1>{projectId ? "Post Drafts" : "All Post Drafts"}</h1>
->>>>>>> Stashed changes
 
       {err && <div className="error">{err}</div>}
       {msg && <div className="success">{msg}</div>}
@@ -267,60 +246,6 @@ export function DraftsPage() {
         </div>
       </div>
 
-<<<<<<< Updated upstream
-      {drafts.length === 0 && !err ? (
-        <p className="muted">
-          No social drafts yet (or none match your filters). After generate has produced ad copy on a run, create
-          drafts with the API above, or enable the weekly plan + approved themes so the scheduler can add{" "}
-          <code>post_draft</code> rows for that project.
-        </p>
-      ) : null}
-      {drafts.length > 0 ? (
-        <div className="stack">
-          {drafts.map((d) => (
-            <div key={d.id} className="card stack">
-              <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
-                <h3 style={{ margin: 0 }}>
-                  {d.platform}
-                  {d.content_type ? (
-                    <span className="muted" style={{ fontWeight: "normal" }}>
-                      {" "}
-                      · {d.organic_label || d.content_type}
-                    </span>
-                  ) : null}{" "}
-                  · <span className={`job-status-badge job-status-${d.status}`}>{d.status}</span>
-                </h3>
-                <span className="muted">run {d.run_id.slice(0, 8)}…</span>
-              </div>
-              {d.aspect_ratio || d.media_pixel_width ? (
-                <p className="muted" style={{ fontSize: 13 }}>
-                  {d.aspect_ratio ? <>Aspect <strong>{d.aspect_ratio}</strong></> : null}
-                  {d.media_pixel_width && d.media_pixel_height ? (
-                    <>
-                      {" "}
-                      · target pixels {d.media_pixel_width}×{d.media_pixel_height}
-                    </>
-                  ) : null}
-                  {d.media_kind ? <> · {d.media_kind.replace(/_/g, " ")}</> : null}
-                </p>
-              ) : null}
-              {d.organic_notes ? (
-                <p className="muted" style={{ fontSize: 12 }}>
-                  {d.organic_notes}
-                </p>
-              ) : null}
-              {d.headline ? <strong>{d.headline}</strong> : null}
-              {d.body ? <p style={{ whiteSpace: "pre-wrap" }}>{d.body}</p> : null}
-              {d.cta ? <p className="muted">CTA: {d.cta}</p> : null}
-              {d.hashtags.length ? <p className="muted">{d.hashtags.join(" ")}</p> : null}
-              <label>
-                Scheduled for (ISO timestamp, UTC)
-                <input
-                  type="text"
-                  defaultValue={d.scheduled_for || ""}
-                  placeholder="2026-05-01T09:00:00Z"
-                  onBlur={(e) => void scheduleDraft(d.id, e.target.value.trim())}
-=======
       {drafts.length === 0 && !err && (
         <div className="card" style={{ textAlign: "center", padding: 40 }}>
           <p className="muted" style={{ margin: 0 }}>
@@ -348,7 +273,6 @@ export function DraftsPage() {
                   urlPath={d.image_media_path}
                   alt={d.headline || "Post image"}
                   className="media-thumb-img"
->>>>>>> Stashed changes
                 />
               </div>
             )}
@@ -475,15 +399,9 @@ export function DraftsPage() {
                 )}
               </div>
             </div>
-<<<<<<< Updated upstream
-          ))}
-        </div>
-      ) : null}
-=======
           </div>
         ))}
       </div>
->>>>>>> Stashed changes
     </div>
   );
 }
