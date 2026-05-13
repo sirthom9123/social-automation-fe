@@ -121,6 +121,8 @@ export function DraftsPage() {
   const [status, setStatus] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const load = useCallback(async () => {
     setErr(null);
@@ -201,6 +203,48 @@ export function DraftsPage() {
     }
   }
 
+  async function deleteDraft(id: string) {
+    if (!window.confirm("Delete this draft permanently? This cannot be undone.")) return;
+    setErr(null);
+    setMsg(null);
+    setDeletingId(id);
+    try {
+      await apiFetch<{ ok: boolean }>(`/post-drafts/${id}`, { method: "DELETE" });
+      setMsg("Draft deleted.");
+      await load();
+    } catch (ex) {
+      setErr(ex instanceof ApiError ? ex.message : "Delete failed");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  async function deleteAllForProject() {
+    if (!projectId) return;
+    if (
+      !window.confirm(
+        "Delete ALL post drafts for this website? This cannot be undone. (Images on disk are removed when possible.)",
+      )
+    ) {
+      return;
+    }
+    setErr(null);
+    setMsg(null);
+    setBulkBusy(true);
+    try {
+      const r = await apiFetch<{ ok: boolean; deleted_count: number }>(
+        `/post-drafts?project_id=${encodeURIComponent(projectId)}`,
+        { method: "DELETE" },
+      );
+      setMsg(`Deleted ${r.deleted_count} draft(s).`);
+      await load();
+    } catch (ex) {
+      setErr(ex instanceof ApiError ? ex.message : "Bulk delete failed");
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
   return (
     <div>
       <h1>{projectId ? "Post Drafts" : "All Post Drafts"}</h1>
@@ -243,6 +287,17 @@ export function DraftsPage() {
           <button type="button" className="btn secondary" onClick={() => void load()}>
             Reload
           </button>
+          {projectId ? (
+            <button
+              type="button"
+              className="btn ghost"
+              style={{ color: "#721c24", borderColor: "#f5c6cb" }}
+              disabled={bulkBusy}
+              onClick={() => void deleteAllForProject()}
+            >
+              {bulkBusy ? "Deleting…" : "Delete all drafts (this site)"}
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -324,6 +379,15 @@ export function DraftsPage() {
               )}
 
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  style={{ fontSize: 13, color: "#721c24" }}
+                  disabled={deletingId === d.id}
+                  onClick={() => void deleteDraft(d.id)}
+                >
+                  {deletingId === d.id ? "Deleting…" : "Delete"}
+                </button>
                 {d.status === "draft" && (
                   <>
                     <button
