@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { AuthenticatedImage } from "../components/AuthenticatedImage";
 import { ApiError, apiFetch } from "../api";
@@ -120,6 +120,7 @@ export function DraftsPage() {
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [generateBusy, setGenerateBusy] = useState(false);
 
@@ -161,8 +162,10 @@ export function DraftsPage() {
         method: "PATCH",
         body: JSON.stringify({ scheduled_for: when || null }),
       });
+      setMsg(`Scheduled for ${new Date(when).toLocaleString()} (hourly tick when due).`);
       await load();
     } catch (ex) {
+      setMsg(null);
       setErr(ex instanceof ApiError ? ex.message : "Schedule failed");
     }
   }
@@ -184,8 +187,10 @@ export function DraftsPage() {
   }
 
   async function publishDraft(id: string, draftPlatform: string) {
+    if (publishingId) return;
     setErr(null);
     setMsg(null);
+    setPublishingId(id);
     try {
       const r = await apiFetch<{ status: string; post_id?: string; error?: string }>(
         `/publish/${draftPlatform}`,
@@ -198,7 +203,20 @@ export function DraftsPage() {
       }
       await load();
     } catch (ex) {
-      setErr(ex instanceof ApiError ? ex.message : "Publish failed");
+      if (ex instanceof ApiError) {
+        const body = ex.body as { error?: string; detail?: unknown } | null;
+        const detail =
+          typeof body?.detail === "string"
+            ? body.detail
+            : body?.detail != null
+              ? JSON.stringify(body.detail)
+              : "";
+        setErr(detail ? `${ex.message} — ${detail}` : ex.message);
+      } else {
+        setErr("Publish failed");
+      }
+    } finally {
+      setPublishingId(null);
     }
   }
 
@@ -498,27 +516,35 @@ export function DraftsPage() {
                   </>
                 )}
                 {d.status === "approved" && (
-                  <>
-                    <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13 }}>
-                      Schedule:
-                      <input
-                        type="datetime-local"
-                        style={{ fontSize: 12 }}
-                        onBlur={(e) => {
-                          const val = e.target.value;
-                          if (val) void scheduleDraft(d.id, new Date(val).toISOString());
-                        }}
-                      />
-                    </label>
-                    <button
-                      type="button"
-                      className="btn"
-                      style={{ fontSize: 13 }}
-                      onClick={() => void publishDraft(d.id, d.platform)}
-                    >
-                      Publish Now
-                    </button>
-                  </>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 8,
+                      width: "100%",
+                      marginTop: 4,
+                    }}
+                  >
+                    <ScheduleDraftControl
+                      draftId={d.id}
+                      scheduledFor={d.scheduled_for}
+                      onSave={(when) => scheduleDraft(d.id, when)}
+                    />
+                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        className="btn"
+                        style={{ fontSize: 13 }}
+                        disabled={publishingId === d.id}
+                        onClick={() => void publishDraft(d.id, d.platform)}
+                      >
+                        {publishingId === d.id ? "Publishing…" : "Publish Now"}
+                      </button>
+                      <span className="muted" style={{ fontSize: 12 }}>
+                        Pick a time above to schedule, or use Publish Now to post immediately.
+                      </span>
+                    </div>
+                  </div>
                 )}
                 {d.status === "rejected" && (
                   <button
@@ -535,6 +561,102 @@ export function DraftsPage() {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function ScheduleDraftControl({
+  draftId,
+  scheduledFor,
+  onSave,
+}: {
+  draftId: string;
+  scheduledFor: string | null;
+  onSave: (iso: string) => Promise<void>;
+}) {
+  const toLocalInput = (iso: string | null) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  const [value, setValue] = useState(() => toLocalInput(scheduledFor));
+  const [busy, setBusy] = useState(false);
+  const [hint, setHint] = useState<string | null>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedLocal = toLocalInput(scheduledFor);
+
+  useEffect(() => {
+    setValue(toLocalInput(scheduledFor));
+    if (scheduledFor) {
+      setHint(`Saved for ${new Date(scheduledFor).toLocaleString()}`);
+    }
+  }, [draftId, scheduledFor]);
+
+  useEffect(
+    () => () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    },
+    [],
+  );
+
+  function queueSave(nextValue: string) {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    if (!nextValue || nextValue.length < 16) return;
+    if (nextValue === savedLocal) {
+      setHint(scheduledFor ? `Saved for ${new Date(scheduledFor).toLocaleString()}` : null);
+      return;
+    }
+
+    setHint("Saving…");
+    saveTimer.current = setTimeout(() => {
+      void (async () => {
+        setBusy(true);
+        try {
+          await onSave(new Date(nextValue).toISOString());
+        } catch {
+          setHint("Could not save schedule — try again.");
+        } finally {
+          setBusy(false);
+        }
+      })();
+    }, 400);
+  }
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 4,
+        fontSize: 13,
+        padding: "8px 10px",
+        background: "#f8f9fa",
+        borderRadius: 8,
+        border: "1px solid #e9ecef",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <label htmlFor={`schedule-${draftId}`} style={{ fontWeight: 600 }}>
+          Schedule:
+        </label>
+        <input
+          id={`schedule-${draftId}`}
+          type="datetime-local"
+          style={{ fontSize: 12, minWidth: 180 }}
+          value={value}
+          disabled={busy}
+          onChange={(e) => {
+            setValue(e.target.value);
+            queueSave(e.target.value);
+          }}
+        />
+      </div>
+      <span className="muted" style={{ fontSize: 12 }}>
+        {busy ? "Saving…" : hint || "Choose a date and time — saves automatically."}
+      </span>
     </div>
   );
 }
