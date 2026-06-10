@@ -121,6 +121,7 @@ export function DraftsPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [expandedBodies, setExpandedBodies] = useState<Record<string, boolean>>({});
   const [bulkBusy, setBulkBusy] = useState(false);
   const [generateBusy, setGenerateBusy] = useState(false);
 
@@ -442,9 +443,26 @@ export function DraftsPage() {
               )}
 
               {d.body && (
-                <p style={{ whiteSpace: "pre-wrap", margin: 0, fontSize: 14, lineHeight: 1.5 }}>
-                  {d.body.length > 300 ? d.body.slice(0, 300) + "..." : d.body}
-                </p>
+                <>
+                  <p style={{ whiteSpace: "pre-wrap", margin: 0, fontSize: 14, lineHeight: 1.5 }}>
+                    {expandedBodies[d.id] || d.body.length <= 300 ? d.body : d.body.slice(0, 300) + "..."}
+                  </p>
+                  {d.body.length > 300 && (
+                    <button
+                      type="button"
+                      className="btn ghost"
+                      style={{ fontSize: 12, width: "fit-content", marginTop: 4 }}
+                      onClick={() =>
+                        setExpandedBodies((prev) => ({
+                          ...prev,
+                          [d.id]: !prev[d.id],
+                        }))
+                      }
+                    >
+                      {expandedBodies[d.id] ? "Show less" : "Show full post"}
+                    </button>
+                  )}
+                </>
               )}
 
               {d.cta && (
@@ -464,6 +482,9 @@ export function DraftsPage() {
                   Scheduled: {new Date(d.scheduled_for).toLocaleString()}
                 </p>
               )}
+              <p style={{ margin: 0, fontSize: 12, color: "#666" }}>
+                Media linked: image {d.image_media_path ? "yes" : "no"} | video {d.video_media_path ? "yes" : "no"}
+              </p>
 
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
                 <button
@@ -515,7 +536,7 @@ export function DraftsPage() {
                     </button>
                   </>
                 )}
-                {d.status === "approved" && (
+                {(d.status === "approved" || d.status === "failed") && (
                   <div
                     style={{
                       display: "flex",
@@ -538,10 +559,20 @@ export function DraftsPage() {
                         disabled={publishingId === d.id}
                         onClick={() => void publishDraft(d.id, d.platform)}
                       >
-                        {publishingId === d.id ? "Publishing…" : "Publish Now"}
+                        {publishingId === d.id ? "Publishing…" : d.status === "failed" ? "Retry Publish" : "Publish Now"}
                       </button>
+                      {d.status === "failed" && (
+                        <button
+                          type="button"
+                          className="btn secondary"
+                          style={{ fontSize: 13 }}
+                          onClick={() => void setDraftStatus(d.id, "approved")}
+                        >
+                          Mark Approved
+                        </button>
+                      )}
                       <span className="muted" style={{ fontSize: 12 }}>
-                        Pick a time above to schedule, or use Publish Now to post immediately.
+                        Pick a time above to schedule, or use {d.status === "failed" ? "Retry Publish" : "Publish Now"} to post immediately.
                       </span>
                     </div>
                   </div>
