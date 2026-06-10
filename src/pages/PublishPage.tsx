@@ -3,7 +3,7 @@ import type { FormEvent } from "react";
 import { ApiError, apiFetch } from "../api";
 
 export function PublishPage() {
-  const [platform, setPlatform] = useState<"facebook" | "tiktok">("facebook");
+  const [platform, setPlatform] = useState<"facebook" | "linkedin">("facebook");
   const [campaignName, setCampaignName] = useState("Test campaign");
   const [objective, setObjective] = useState("TRAFFIC");
   const [out, setOut] = useState<Record<string, unknown> | null>(null);
@@ -15,11 +15,9 @@ export function PublishPage() {
     setErr(null);
     setBusy(true);
     setOut(null);
-    const path = platform === "facebook" ? "/publish/facebook" : "/publish/tiktok";
+    const path = platform === "facebook" ? "/publish/facebook" : "/publish/linkedin";
     const body =
-      platform === "facebook"
-        ? { campaign_name: campaignName, objective }
-        : { campaign_name: campaignName };
+      platform === "facebook" ? { campaign_name: campaignName, objective } : { campaign_name: campaignName };
     try {
       const r = await apiFetch<Record<string, unknown>>(path, {
         method: "POST",
@@ -36,15 +34,15 @@ export function PublishPage() {
   return (
     <div>
       <h1>Publish (stub)</h1>
-      <p className="muted">Calls the API with your draft intent. Real Meta/TikTok publishing is not implemented yet.</p>
+      <p className="muted">Calls the API with your draft intent. TikTok publishing is temporarily disabled pending verification.</p>
       {err ? <div className="error">{err}</div> : null}
 
       <form className="card stack" onSubmit={onSubmit}>
         <label>
           Platform
-          <select value={platform} onChange={(e) => setPlatform(e.target.value as "facebook" | "tiktok")}>
+          <select value={platform} onChange={(e) => setPlatform(e.target.value as "facebook" | "linkedin")}>
             <option value="facebook">Facebook / Meta</option>
-            <option value="tiktok">TikTok</option>
+            <option value="linkedin">LinkedIn</option>
           </select>
         </label>
         <label>

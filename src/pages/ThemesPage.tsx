@@ -19,6 +19,7 @@ type Theme = {
 
 const ALL_PLATFORMS = ["facebook", "tiktok", "linkedin", "email"] as const;
 const STATUSES = ["draft", "approved", "scheduled", "posted"] as const;
+const NOTION_ENABLED = String(import.meta.env.VITE_NOTION_ENABLED || "false").toLowerCase() === "true";
 
 export function ThemesPage() {
   const { projectId } = useParams<{ projectId?: string }>();
@@ -194,7 +195,9 @@ export function ThemesPage() {
         ) : (
           "Running Analyze auto-generates draft themes per project. Open a website workspace for project-scoped backlog and re-generation."
         )}{" "}
-        Connect a Notion database to sync extra ideas; optional alongside auto themes.
+        {NOTION_ENABLED
+          ? "Connect a Notion database to sync extra ideas; optional alongside auto themes."
+          : "Notion sync is currently disabled for this environment."}
       </p>
 
       {projectId ? (
@@ -258,9 +261,16 @@ export function ThemesPage() {
             <button type="submit" className="btn">
               Save Notion settings
             </button>
-            <button type="button" className="btn secondary" onClick={() => void syncNotion()} disabled={busy || !notionConfigured}>
-              {busy ? "Syncing…" : "Sync from Notion"}
-            </button>
+            {NOTION_ENABLED ? (
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={() => void syncNotion()}
+                disabled={busy || !notionConfigured}
+              >
+                {busy ? "Syncing…" : "Sync from Notion"}
+              </button>
+            ) : null}
             <button type="button" className="btn ghost" onClick={() => void sendDigest()}>
               Send Monday digest
             </button>

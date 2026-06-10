@@ -20,12 +20,11 @@ type IntegrationResponse<K extends string, V extends Record<string, string>> = {
 type ProjectBrief = { id: string; slug: string; root_url: string };
 
 type MetaView = { access_token: string; ad_account_id: string; page_id: string };
-type TiktokView = { access_token: string; advertiser_id: string };
 type LinkedinView = { access_token: string; organization_urn: string };
 
 type IntegrationsOverview = {
   integrations: Record<
-    "meta" | "tiktok" | "linkedin" | "notion" | "google_sheets",
+    "meta" | "linkedin" | "notion" | "google_sheets",
     Array<{
       scope: "user" | "project";
       project_id: string | null;
@@ -43,16 +42,11 @@ export function IntegrationsPage() {
   const [projects, setProjects] = useState<ProjectBrief[]>([]);
   const [scope, setScope] = useState<string | null>(null); // null = user default
   const [meta, setMeta] = useState<MetaView>({ access_token: "", ad_account_id: "", page_id: "" });
-  const [tiktok, setTiktok] = useState<TiktokView>({ access_token: "", advertiser_id: "" });
   const [linkedin, setLinkedin] = useState<LinkedinView>({
     access_token: "",
     organization_urn: "",
   });
   const [metaState, setMetaState] = useState<{ configured: boolean; scope: string }>({
-    configured: false,
-    scope: "none",
-  });
-  const [tiktokState, setTiktokState] = useState<{ configured: boolean; scope: string }>({
     configured: false,
     scope: "none",
   });
@@ -101,14 +95,6 @@ export function IntegrationsPage() {
       }
       if (m.encryption) setEncryption(m.encryption);
 
-      const t = await apiFetch<IntegrationResponse<"tiktok", TiktokView>>(`/integrations/tiktok${qs}`);
-      setTiktokState({ configured: t.configured, scope: t.scope });
-      if (t.configured) {
-        setTiktok((prev) => ({ ...prev, advertiser_id: t.tiktok.advertiser_id || "" }));
-      } else {
-        setTiktok({ access_token: "", advertiser_id: "" });
-      }
-
       const li = await apiFetch<IntegrationResponse<"linkedin", LinkedinView>>(
         `/integrations/linkedin${qs}`,
       );
@@ -135,10 +121,7 @@ export function IntegrationsPage() {
     void loadPlatforms();
   }, [loadPlatforms]);
 
-  async function save(
-    platform: "meta" | "tiktok" | "linkedin",
-    body: Record<string, string>,
-  ): Promise<void> {
+  async function save(platform: "meta" | "linkedin", body: Record<string, string>): Promise<void> {
     setErr(null);
     setMsg(null);
     try {
@@ -157,7 +140,7 @@ export function IntegrationsPage() {
     }
   }
 
-  async function remove(platform: "meta" | "tiktok" | "linkedin") {
+  async function remove(platform: "meta" | "linkedin") {
     setErr(null);
     setMsg(null);
     if (!confirm(`Remove ${scope ? "project" : "user"}-scoped ${platform} credentials?`)) return;
@@ -174,7 +157,7 @@ export function IntegrationsPage() {
     <div>
       <h1>Integrations</h1>
       <p className="muted">
-        Store Meta, TikTok and LinkedIn API credentials. Values are stored encrypted at rest and only masked
+        Store Meta and LinkedIn API credentials. TikTok is temporarily disabled pending verification. Values are stored encrypted at rest and only masked
         tokens are ever returned by the API. Each site you analyze can have its own page/account — pick the
         project from the scope selector to override the user default.
       </p>
@@ -229,29 +212,6 @@ export function IntegrationsPage() {
           label="Page ID"
           value={meta.page_id}
           onChange={(v) => setMeta({ ...meta, page_id: v })}
-        />
-      </IntegrationCard>
-
-      <IntegrationCard
-        title="TikTok"
-        state={tiktokState}
-        onRemove={() => void remove("tiktok")}
-        onSubmit={(e) => {
-          e.preventDefault();
-          void save("tiktok", tiktok);
-        }}
-      >
-        <Input
-          label="Access token"
-          type="password"
-          value={tiktok.access_token}
-          onChange={(v) => setTiktok({ ...tiktok, access_token: v })}
-          placeholder="Paste new token to replace"
-        />
-        <Input
-          label="Advertiser ID"
-          value={tiktok.advertiser_id}
-          onChange={(v) => setTiktok({ ...tiktok, advertiser_id: v })}
         />
       </IntegrationCard>
 

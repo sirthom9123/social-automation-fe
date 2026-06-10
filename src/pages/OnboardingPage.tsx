@@ -38,8 +38,6 @@ const ORGANIC_FORMATS: { id: string; label: string }[] = [
   { id: "facebook_post", label: "FB feed 4:5" },
   { id: "facebook_reel", label: "FB Reel 9:16" },
   { id: "facebook_status", label: "FB status" },
-  { id: "tiktok_video", label: "TikTok video" },
-  { id: "tiktok_slides", label: "TikTok slides" },
   { id: "linkedin_post", label: "LinkedIn" },
 ];
 
@@ -182,7 +180,7 @@ export function OnboardingPage() {
       done: integrationsConfigured,
       body: (
         <p>
-          Paste Meta / TikTok / LinkedIn tokens. If every project posts to the same page, save them at the
+          Paste Meta / LinkedIn tokens. TikTok is temporarily disabled pending verification. If every project posts to the same page, save them at the
           user default scope. If each site has its own page, use the scope selector on Integrations to save
           project-specific overrides — our resolver always prefers project then user.
         </p>

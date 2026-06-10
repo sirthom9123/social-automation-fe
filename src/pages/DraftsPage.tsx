@@ -28,7 +28,7 @@ type Draft = {
   created_at: string | null;
 };
 
-const PLATFORMS = ["", "facebook", "tiktok", "linkedin"];
+const PLATFORMS = ["", "facebook", "linkedin"];
 const STATUSES = ["", "draft", "pending_review", "approved", "rejected", "posted", "failed"];
 
 const STATUS_PIPELINE = ["draft", "pending_review", "approved", "scheduled", "posted"];
@@ -66,12 +66,10 @@ function StatusBadge({ status }: { status: string }) {
 function PlatformIcon({ platform }: { platform: string }) {
   const labels: Record<string, string> = {
     facebook: "FB",
-    tiktok: "TT",
     linkedin: "LI",
   };
   const colors: Record<string, string> = {
     facebook: "#1877f2",
-    tiktok: "#000",
     linkedin: "#0a66c2",
   };
   return (

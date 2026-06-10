@@ -52,7 +52,7 @@ export function CampaignFlowPage() {
   const [accepted, setAccepted] = useState(false);
   const [weeklyLivePostAutomation, setWeeklyLivePostAutomation] = useState(false);
   const [weeklyProfileDefault, setWeeklyProfileDefault] = useState(false);
-  const [platform, setPlatform] = useState<"facebook" | "tiktok" | "linkedin" | "">("");
+  const [platform, setPlatform] = useState<"facebook" | "linkedin" | "">("");
   const [publishResult, setPublishResult] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
@@ -235,7 +235,7 @@ export function CampaignFlowPage() {
 
   async function onPublish() {
     if (!platform) {
-      setErr("Choose Meta or TikTok first.");
+      setErr("Choose Meta or LinkedIn first.");
       return;
     }
     setErr(null);
@@ -243,8 +243,6 @@ export function CampaignFlowPage() {
       const path =
         platform === "facebook"
           ? "/publish/facebook"
-          : platform === "tiktok"
-          ? "/publish/tiktok"
           : "/publish/linkedin";
       const body =
         platform === "facebook"
@@ -395,11 +393,10 @@ export function CampaignFlowPage() {
               Platform to use next (stub)
               <select
                 value={platform}
-                onChange={(e) => setPlatform(e.target.value as "facebook" | "tiktok" | "linkedin" | "")}
+                onChange={(e) => setPlatform(e.target.value as "facebook" | "linkedin" | "")}
               >
                 <option value="">Select…</option>
                 <option value="facebook">Meta / Facebook</option>
-                <option value="tiktok">TikTok</option>
                 <option value="linkedin">LinkedIn</option>
               </select>
             </label>
