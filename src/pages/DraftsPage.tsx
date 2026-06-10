@@ -221,29 +221,57 @@ export function DraftsPage() {
   async function generateFromApprovedThemes() {
     if (!projectId) return;
     setErr(null);
-    setMsg(null);
+    setMsg("Generating drafts from approved themes — this may take a few minutes…");
     setGenerateBusy(true);
     try {
       const r = await apiFetch<{
-        ok: boolean;
-        created_drafts?: number;
-        themes_scheduled?: number;
-        error?: string;
-        detail?: string;
+        job: { id: string; status: string; job_type: string };
       }>(`/projects/${encodeURIComponent(projectId)}/post-drafts/from-themes`, {
         method: "POST",
         body: JSON.stringify({}),
       });
-      if (r.created_drafts) {
-        setMsg(
-          `Created ${r.created_drafts} draft(s) from approved themes` +
-            (r.themes_scheduled ? ` (${r.themes_scheduled} theme(s) marked scheduled).` : "."),
-        );
-      } else {
-        setMsg("No new drafts were created.");
+
+      const jobId = r.job.id;
+      for (;;) {
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        const jr = await apiFetch<{
+          job: {
+            status: string;
+            result_json: Record<string, unknown> | null;
+            error: string | null;
+          };
+        }>(`/jobs/${jobId}`);
+        const { status, result_json: result, error } = jr.job;
+        if (status === "completed") {
+          const created = Number(result?.created_drafts ?? 0);
+          const scheduled = Number(result?.themes_scheduled ?? 0);
+          const resultStatus = String(result?.status ?? "");
+          if (resultStatus === "no_approved_themes") {
+            setMsg(null);
+            setErr("Approve at least one theme on the Themes page, then try again.");
+          } else if (resultStatus === "no_runs") {
+            setMsg(null);
+            setErr("Run Analyze on this site first.");
+          } else if (resultStatus === "no_brand_snapshot") {
+            setMsg(null);
+            setErr("No brand snapshot found for this project.");
+          } else if (created > 0) {
+            setMsg(
+              `Created ${created} draft(s) from approved themes` +
+                (scheduled ? ` (${scheduled} theme(s) marked scheduled).` : "."),
+            );
+          } else {
+            setMsg("No new drafts were created.");
+          }
+          break;
+        }
+        if (status === "failed") {
+          throw new ApiError(error || "Draft generation failed", 500, jr);
+        }
       }
       await load();
     } catch (ex) {
+      setMsg(null);
       setErr(ex instanceof ApiError ? ex.message : "Could not generate drafts from themes");
     } finally {
       setGenerateBusy(false);
