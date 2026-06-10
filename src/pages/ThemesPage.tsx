@@ -189,8 +189,9 @@ export function ThemesPage() {
         {projectId ? (
           <>
             Running <strong>Analyze</strong> on this site auto-generates a <strong>weekly</strong> set of draft themes
-            from the brand snapshot (source: <code>analysis</code>). Approve themes you like; the weekly planner only
-            uses <strong>approved</strong> themes.
+            from the brand snapshot (source: <code>analysis</code>). Approve themes you like, then generate post
+            drafts from the Drafts page. Only <strong>approved</strong> themes are used; after drafts are built they
+            move to <strong>scheduled</strong>, and to <strong>posted</strong> once published.
           </>
         ) : (
           "Running Analyze auto-generates draft themes per project. Open a website workspace for project-scoped backlog and re-generation."

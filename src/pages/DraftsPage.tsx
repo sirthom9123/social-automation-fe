@@ -121,6 +121,7 @@ export function DraftsPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [generateBusy, setGenerateBusy] = useState(false);
 
   const load = useCallback(async () => {
     setErr(null);
@@ -217,6 +218,38 @@ export function DraftsPage() {
     }
   }
 
+  async function generateFromApprovedThemes() {
+    if (!projectId) return;
+    setErr(null);
+    setMsg(null);
+    setGenerateBusy(true);
+    try {
+      const r = await apiFetch<{
+        ok: boolean;
+        created_drafts?: number;
+        themes_scheduled?: number;
+        error?: string;
+        detail?: string;
+      }>(`/projects/${encodeURIComponent(projectId)}/post-drafts/from-themes`, {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+      if (r.created_drafts) {
+        setMsg(
+          `Created ${r.created_drafts} draft(s) from approved themes` +
+            (r.themes_scheduled ? ` (${r.themes_scheduled} theme(s) marked scheduled).` : "."),
+        );
+      } else {
+        setMsg("No new drafts were created.");
+      }
+      await load();
+    } catch (ex) {
+      setErr(ex instanceof ApiError ? ex.message : "Could not generate drafts from themes");
+    } finally {
+      setGenerateBusy(false);
+    }
+  }
+
   async function deleteAllForProject() {
     if (!projectId) return;
     if (
@@ -288,6 +321,16 @@ export function DraftsPage() {
           {projectId ? (
             <button
               type="button"
+              className="btn"
+              disabled={generateBusy}
+              onClick={() => void generateFromApprovedThemes()}
+            >
+              {generateBusy ? "Generating…" : "Generate from approved themes"}
+            </button>
+          ) : null}
+          {projectId ? (
+            <button
+              type="button"
               className="btn ghost"
               style={{ color: "#721c24", borderColor: "#f5c6cb" }}
               disabled={bulkBusy}
@@ -302,8 +345,8 @@ export function DraftsPage() {
       {drafts.length === 0 && !err && (
         <div className="card" style={{ textAlign: "center", padding: 40 }}>
           <p className="muted" style={{ margin: 0 }}>
-            No drafts match your filters. Drafts are generated automatically when themes are approved
-            and the weekly plan runs.
+            No drafts yet. Approve themes on the Themes page, then click{" "}
+            <strong>Generate from approved themes</strong> (or enable weekly automation).
           </p>
         </div>
       )}
